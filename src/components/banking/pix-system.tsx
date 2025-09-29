@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { BankingButton } from "@/components/ui/banking-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { SmartFormValidation } from "@/components/ai/smart-form-validation";
+import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { 
   QrCode, 
   Smartphone, 
@@ -31,6 +33,8 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [userActions, setUserActions] = useState<string[]>(['pix-first-access']);
+  const [isFormValid, setIsFormValid] = useState(false);
   const { toast } = useToast();
 
   const myPixKey = "etec.user@cps.sp.gov.br";
@@ -163,46 +167,38 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pixKey">Chave PIX do destinatário</Label>
-                  <Input
-                    id="pixKey"
-                    placeholder="E-mail, CPF, telefone ou chave aleatória"
-                    value={pixKey}
-                    onChange={(e) => setPixKey(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
+                <SmartFormValidation
+                  type="pix-key"
+                  value={pixKey}
+                  label="Chave PIX do destinatário"
+                  placeholder="E-mail, CPF, telefone ou chave aleatória"
+                  onChange={setPixKey}
+                  onValidationChange={(valid) => setIsFormValid(valid && !!amount)}
+                />
                 
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Valor (R$)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="0,00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    disabled={isLoading}
-                    step="0.01"
-                  />
-                </div>
+                <SmartFormValidation
+                  type="amount"
+                  value={amount}
+                  label="Valor (R$)"
+                  placeholder="0,00"
+                  userBalance={userBalance}
+                  onChange={setAmount}
+                  onValidationChange={(valid) => setIsFormValid(valid && !!pixKey)}
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição (opcional)</Label>
-                  <Input
-                    id="description"
-                    placeholder="Descrição da transferência"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
+                <SmartFormValidation
+                  type="description"
+                  value={description}
+                  label="Descrição (opcional)"
+                  placeholder="Descrição da transferência"
+                  onChange={setDescription}
+                />
 
                 <BankingButton
                   variant="pix"
                   className="w-full"
                   onClick={handleSendPix}
-                  disabled={isLoading}
+                  disabled={isLoading || !isFormValid}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
@@ -302,6 +298,13 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Contextual Prompts for PIX */}
+      <ContextualPrompts
+        currentPage="pix"
+        userActions={userActions}
+        onPromptComplete={(promptId) => setUserActions(prev => [...prev, `completed-${promptId}`])}
+      />
     </div>
   );
 };

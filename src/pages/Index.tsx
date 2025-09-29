@@ -10,12 +10,19 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [balance, setBalance] = useState(2834.67);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const { toast } = useToast();
 
   const handleLogin = (credentials: { username: string; password: string }) => {
     setUser({ username: credentials.username });
     setIsAuthenticated(true);
     setCurrentPage("dashboard");
+    // Check if first time user (could be based on localStorage or user data)
+    const isFirstTime = !localStorage.getItem(`user_${credentials.username}_visited`);
+    setIsFirstTimeUser(isFirstTime);
+    if (isFirstTime) {
+      localStorage.setItem(`user_${credentials.username}_visited`, 'true');
+    }
   };
 
   const handleLogout = () => {
@@ -68,6 +75,7 @@ const Index = () => {
       user={user!}
       onLogout={handleLogout}
       onNavigate={handleNavigate}
+      isFirstTime={isFirstTimeUser}
     />
   );
 };

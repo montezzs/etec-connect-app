@@ -18,6 +18,9 @@ import {
   LogOut
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FinancialAssistant } from "@/components/ai/financial-assistant";
+import { SmartSuggestions } from "@/components/ai/smart-suggestions";
+import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import heroImage from "@/assets/hero-banking.jpg";
 
 interface Transaction {
@@ -33,11 +36,14 @@ interface DashboardProps {
   user: { username: string };
   onLogout: () => void;
   onNavigate: (page: string) => void;
+  isFirstTime?: boolean;
 }
 
-export const Dashboard = ({ user, onLogout, onNavigate }: DashboardProps) => {
+export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: DashboardProps) => {
   const [balance, setBalance] = useState(2834.67);
   const [showBalance, setShowBalance] = useState(true);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [userActions, setUserActions] = useState<string[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
       id: "1",
@@ -82,11 +88,36 @@ export const Dashboard = ({ user, onLogout, onNavigate }: DashboardProps) => {
   };
 
   const handleQuickAction = (action: string) => {
+    setUserActions(prev => [...prev, action.toLowerCase().replace(' ', '-')]);
     toast({
       title: `${action} selecionado`,
       description: "Funcionalidade em desenvolvimento",
     });
   };
+
+  const handleAssistantAction = (action: string) => {
+    if (action.includes('gastos')) {
+      setUserActions(prev => [...prev, 'expense-analysis']);
+    } else if (action.includes('meta')) {
+      onNavigate('goals');
+    } else if (action.includes('investimento')) {
+      setUserActions(prev => [...prev, 'investment-interest']);
+    }
+  };
+
+  const handlePromptComplete = (promptId: string) => {
+    setUserActions(prev => [...prev, `prompt-completed-${promptId}`]);
+  };
+
+  // Detect user behavior patterns
+  useEffect(() => {
+    if (balance > 3000) {
+      setUserActions(prev => [...prev, 'high-balance']);
+    }
+    if (transactions.length > 10) {
+      setUserActions(prev => [...prev, 'multiple-transactions']);
+    }
+  }, [balance, transactions]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/10">
@@ -241,6 +272,14 @@ export const Dashboard = ({ user, onLogout, onNavigate }: DashboardProps) => {
           </CardContent>
         </Card>
 
+        {/* Smart Suggestions */}
+        <SmartSuggestions
+          userBalance={balance}
+          transactions={transactions}
+          username={user.username}
+          onActionClick={handleAssistantAction}
+        />
+
         {/* Goals Card */}
         <Card className="shadow-[var(--shadow-card)] animate-fade-in">
           <CardHeader>
@@ -268,6 +307,23 @@ export const Dashboard = ({ user, onLogout, onNavigate }: DashboardProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Assistant */}
+      <FinancialAssistant
+        userBalance={balance}
+        transactions={transactions}
+        username={user.username}
+        isOpen={isAssistantOpen}
+        onToggle={() => setIsAssistantOpen(!isAssistantOpen)}
+      />
+
+      {/* Contextual Prompts */}
+      <ContextualPrompts
+        currentPage="dashboard"
+        userActions={userActions}
+        isFirstTime={isFirstTime}
+        onPromptComplete={handlePromptComplete}
+      />
     </div>
   );
 };
