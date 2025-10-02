@@ -33,14 +33,13 @@ interface Transaction {
 }
 
 interface DashboardProps {
-  user: { username: string };
+  user: { username: string; balance: number };
   onLogout: () => void;
   onNavigate: (page: string) => void;
   isFirstTime?: boolean;
 }
 
 export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: DashboardProps) => {
-  const [balance, setBalance] = useState(2834.67);
   const [showBalance, setShowBalance] = useState(true);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
@@ -81,10 +80,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+    return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
   const handleQuickAction = (action: string) => {
@@ -111,13 +107,13 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
 
   // Detect user behavior patterns
   useEffect(() => {
-    if (balance > 3000) {
+    if (user.balance > 3000) {
       setUserActions(prev => [...prev, 'high-balance']);
     }
     if (transactions.length > 10) {
       setUserActions(prev => [...prev, 'multiple-transactions']);
     }
-  }, [balance, transactions]);
+  }, [user.balance, transactions]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/10">
@@ -137,7 +133,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
             <BankingButton
               variant="ghost"
               size="icon"
-              onClick={() => handleQuickAction("Notificações")}
+              onClick={() => onNavigate("notifications")}
               className="text-primary-foreground hover:bg-primary-foreground/20"
             >
               <Bell className="w-5 h-5" />
@@ -170,7 +166,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
               </BankingButton>
             </div>
             <p className="text-3xl font-bold text-foreground mb-2">
-              {showBalance ? formatCurrency(balance) : "••••••"}
+              {showBalance ? formatCurrency(user.balance) : "••••••"}
             </p>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
@@ -206,18 +202,18 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
               <BankingButton
                 variant="secondary"
                 className="h-16 flex-col"
-                onClick={() => handleQuickAction("Transferir")}
+                onClick={() => onNavigate("investments")}
               >
-                <Send className="w-6 h-6 mb-1" />
-                <span className="text-xs">Transferir</span>
+                <PiggyBank className="w-6 h-6 mb-1" />
+                <span className="text-xs">Investir</span>
               </BankingButton>
               <BankingButton
                 variant="secondary"
                 className="h-16 flex-col"
-                onClick={() => handleQuickAction("Investir")}
+                onClick={() => onNavigate("notifications")}
               >
-                <PiggyBank className="w-6 h-6 mb-1" />
-                <span className="text-xs">Investir</span>
+                <Bell className="w-6 h-6 mb-1" />
+                <span className="text-xs">Notificações</span>
               </BankingButton>
             </div>
           </CardContent>
@@ -274,7 +270,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
 
         {/* Smart Suggestions */}
         <SmartSuggestions
-          userBalance={balance}
+          userBalance={user.balance}
           transactions={transactions}
           username={user.username}
           onActionClick={handleAssistantAction}
@@ -289,10 +285,10 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+              <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span>Viagem ETEC 2024</span>
-                <span className="font-medium">R$ 850 / R$ 1.500</span>
+                <span className="font-medium">Ð$ 850 / Ð$ 1.500</span>
               </div>
               <div className="w-full bg-secondary rounded-full h-2">
                 <div 
@@ -301,7 +297,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Faltam R$ 650 para atingir sua meta!
+                Faltam Ð$ 650 para atingir sua meta!
               </p>
             </div>
           </CardContent>
@@ -310,7 +306,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
 
       {/* AI Assistant */}
       <FinancialAssistant
-        userBalance={balance}
+        userBalance={user.balance}
         transactions={transactions}
         username={user.username}
         isOpen={isAssistantOpen}

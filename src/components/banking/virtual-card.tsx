@@ -35,10 +35,7 @@ export const VirtualCard = ({ onBack, userBalance }: VirtualCardProps) => {
   const cardholderName = "ETEC CENTRO PAULA SOUZA";
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+    return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
   const handleCopy = async (text: string, type: string) => {

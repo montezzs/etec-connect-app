@@ -41,10 +41,7 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
   const qrCodeData = `00020101021226570014br.gov.bcb.pix2535${myPixKey}52040000530398654041.005802BR5925ETEC CENTRO PAULA SOUZA6009SAO PAULO62070503***6304`;
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+    return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
   const handleCopyPixKey = async () => {
@@ -179,7 +176,7 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
                 <SmartFormValidation
                   type="amount"
                   value={amount}
-                  label="Valor (R$)"
+                  label="Valor (Ð$)"
                   placeholder="0,00"
                   userBalance={userBalance}
                   onChange={setAmount}
