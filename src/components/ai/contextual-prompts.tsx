@@ -38,7 +38,11 @@ export const ContextualPrompts = ({
 }: ContextualPromptsProps) => {
   const [activePrompt, setActivePrompt] = useState<ContextualPrompt | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [completedPrompts, setCompletedPrompts] = useState<string[]>([]);
+  const [completedPrompts, setCompletedPrompts] = useState<string[]>(() => {
+    // Load completed prompts from localStorage
+    const saved = localStorage.getItem('completed_prompts');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [isVisible, setIsVisible] = useState(false);
 
   // Define contextual prompts for different scenarios
@@ -154,7 +158,10 @@ export const ContextualPrompts = ({
 
   const handleCompletePrompt = () => {
     if (activePrompt) {
-      setCompletedPrompts(prev => [...prev, activePrompt.id]);
+      const updatedPrompts = [...completedPrompts, activePrompt.id];
+      setCompletedPrompts(updatedPrompts);
+      // Save to localStorage
+      localStorage.setItem('completed_prompts', JSON.stringify(updatedPrompts));
       if (onPromptComplete) {
         onPromptComplete(activePrompt.id);
       }

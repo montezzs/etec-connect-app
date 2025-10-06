@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FinancialAssistant } from "@/components/ai/financial-assistant";
 import { SmartSuggestions } from "@/components/ai/smart-suggestions";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
+import { FinancialStats } from "@/components/banking/financial-stats";
 import heroImage from "@/assets/hero-banking.jpg";
 
 interface Transaction {
@@ -37,46 +38,51 @@ interface DashboardProps {
   onLogout: () => void;
   onNavigate: (page: string) => void;
   isFirstTime?: boolean;
+  transactions?: Transaction[];
 }
 
-export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: DashboardProps) => {
+export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions }: DashboardProps) => {
   const [showBalance, setShowBalance] = useState(true);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "1",
-      type: "income",
-      description: "Salário ETEC",
-      amount: 3200.00,
-      date: "2024-01-15",
-      category: "Salário"
-    },
-    {
-      id: "2", 
-      type: "expense",
-      description: "Supermercado",
-      amount: 120.50,
-      date: "2024-01-14",
-      category: "Alimentação"
-    },
-    {
-      id: "3",
-      type: "expense",
-      description: "Transporte",
-      amount: 45.30,
-      date: "2024-01-14",
-      category: "Transporte"
-    },
-    {
-      id: "4",
-      type: "income",
-      description: "PIX Recebido",
-      amount: 200.00,
-      date: "2024-01-13",
-      category: "Transferência"
-    }
-  ]);
+  const [transactions] = useState<Transaction[]>(
+    externalTransactions && externalTransactions.length > 0
+      ? externalTransactions
+      : [
+          {
+            id: "1",
+            type: "income",
+            description: "Salário ETEC",
+            amount: 3200.0,
+            date: "2024-01-15",
+            category: "Salário",
+          },
+          {
+            id: "2",
+            type: "expense",
+            description: "Supermercado",
+            amount: 120.5,
+            date: "2024-01-14",
+            category: "Alimentação",
+          },
+          {
+            id: "3",
+            type: "expense",
+            description: "Transporte",
+            amount: 45.3,
+            date: "2024-01-14",
+            category: "Transporte",
+          },
+          {
+            id: "4",
+            type: "income",
+            description: "PIX Recebido",
+            amount: 200.0,
+            date: "2024-01-13",
+            category: "Transferência",
+          },
+        ]
+  );
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -152,7 +158,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
 
       <div className="max-w-md mx-auto p-4 space-y-6">
         {/* Balance Card */}
-        <Card className="shadow-[var(--shadow-card)] animate-fade-in">
+        <Card className="shadow-[var(--shadow-card)] animate-scale-in hover:shadow-[var(--shadow-elevation)] transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-muted-foreground">Saldo disponível</h3>
@@ -177,7 +183,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
         </Card>
 
         {/* Quick Actions */}
-        <Card className="shadow-[var(--shadow-card)] animate-fade-in">
+        <Card className="shadow-[var(--shadow-card)] animate-slide-up hover:shadow-[var(--shadow-elevation)] transition-all duration-300">
           <CardHeader>
             <CardTitle className="text-lg">Ações rápidas</CardTitle>
           </CardHeader>
@@ -185,7 +191,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
             <div className="grid grid-cols-2 gap-3">
               <BankingButton
                 variant="pix"
-                className="h-16 flex-col"
+                className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("pix")}
               >
                 <QrCode className="w-6 h-6 mb-1" />
@@ -193,7 +199,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
               </BankingButton>
               <BankingButton
                 variant="outline"
-                className="h-16 flex-col"
+                className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("card")}
               >
                 <CreditCard className="w-6 h-6 mb-1" />
@@ -201,7 +207,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
               </BankingButton>
               <BankingButton
                 variant="secondary"
-                className="h-16 flex-col"
+                className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("investments")}
               >
                 <PiggyBank className="w-6 h-6 mb-1" />
@@ -209,7 +215,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
               </BankingButton>
               <BankingButton
                 variant="secondary"
-                className="h-16 flex-col"
+                className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("notifications")}
               >
                 <Bell className="w-6 h-6 mb-1" />
@@ -220,14 +226,14 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
         </Card>
 
         {/* Recent Transactions */}
-        <Card className="shadow-[var(--shadow-card)] animate-fade-in">
+        <Card className="shadow-[var(--shadow-card)] animate-slide-up hover:shadow-[var(--shadow-elevation)] transition-all duration-300">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Últimas transações</CardTitle>
               <BankingButton
                 variant="ghost"
                 size="sm"
-                onClick={() => handleQuickAction("Ver todas")}
+                onClick={() => onNavigate("history")}
               >
                 Ver todas
               </BankingButton>
@@ -235,7 +241,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
           </CardHeader>
           <CardContent className="space-y-3">
             {transactions.slice(0, 4).map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 transition-colors">
+              <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     transaction.type === 'income' 
@@ -268,6 +274,9 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
           </CardContent>
         </Card>
 
+        {/* Financial Stats */}
+        <FinancialStats transactions={transactions} />
+
         {/* Smart Suggestions */}
         <SmartSuggestions
           userBalance={user.balance}
@@ -277,7 +286,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false }: D
         />
 
         {/* Goals Card */}
-        <Card className="shadow-[var(--shadow-card)] animate-fade-in">
+        <Card className="shadow-[var(--shadow-card)] animate-slide-up hover:shadow-[var(--shadow-elevation)] transition-all duration-300">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />

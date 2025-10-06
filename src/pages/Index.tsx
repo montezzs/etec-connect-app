@@ -6,6 +6,7 @@ import { PixSystem } from "@/components/banking/pix-system";
 import { VirtualCard } from "@/components/banking/virtual-card";
 import { Investments } from "@/components/banking/investments";
 import { Notifications } from "@/components/banking/notifications";
+import { TransactionHistory } from "@/components/banking/transaction-history";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
@@ -15,6 +16,7 @@ const Index = () => {
   const [profile, setProfile] = useState<any>(null);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -73,6 +75,40 @@ const Index = () => {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
+
+  // Fetch user transactions
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setAllTransactions(
+          data.map((t) => ({
+            id: t.id,
+            type: t.type,
+            description: t.description,
+            amount: t.amount,
+            date: t.created_at,
+            category: t.description.includes("PIX")
+              ? "Transferência"
+              : t.description.includes("Supermercado")
+              ? "Alimentação"
+              : t.description.includes("Transporte")
+              ? "Transporte"
+              : "Outros",
+          }))
+        );
+      }
+    };
+
+    fetchTransactions();
+  }, [user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -178,12 +214,22 @@ const Index = () => {
     );
   }
 
+  if (currentPage === "history") {
+    return (
+      <TransactionHistory
+        onBack={() => setCurrentPage("dashboard")}
+        transactions={allTransactions}
+      />
+    );
+  }
+
   return (
     <Dashboard
       user={{ username: profile.username, balance: profile.balance }}
       onLogout={handleLogout}
       onNavigate={handleNavigate}
       isFirstTime={isFirstTimeUser}
+      transactions={allTransactions}
     />
   );
 };
