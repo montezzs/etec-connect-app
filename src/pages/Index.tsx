@@ -7,6 +7,8 @@ import { VirtualCard } from "@/components/banking/virtual-card";
 import { Investments } from "@/components/banking/investments";
 import { Notifications } from "@/components/banking/notifications";
 import { TransactionHistory } from "@/components/banking/transaction-history";
+import { Goals } from "@/components/banking/goals";
+import { AdminPanel } from "@/components/banking/admin-panel";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
@@ -17,6 +19,7 @@ const Index = () => {
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -35,6 +38,16 @@ const Index = () => {
             .single();
           
           setProfile(profileData);
+          
+          // Check if user is admin
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", session.user.id)
+            .eq("role", "admin")
+            .single();
+          
+          setIsAdmin(!!roleData);
           
           // Check if first time
           const isFirstTime = !localStorage.getItem(`user_${session.user.id}_visited`);
@@ -223,6 +236,32 @@ const Index = () => {
     );
   }
 
+  if (currentPage === "goals") {
+    return (
+      <Goals
+        onBack={() => setCurrentPage("dashboard")}
+        userId={user.id}
+        userBalance={profile.balance}
+      />
+    );
+  }
+
+  if (currentPage === "admin") {
+    if (!isAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para acessar o painel administrativo",
+        variant: "destructive",
+      });
+      setCurrentPage("dashboard");
+      return null;
+    }
+    
+    return (
+      <AdminPanel onBack={() => setCurrentPage("dashboard")} />
+    );
+  }
+
   return (
     <Dashboard
       user={{ username: profile.username, balance: profile.balance }}
@@ -230,6 +269,7 @@ const Index = () => {
       onNavigate={handleNavigate}
       isFirstTime={isFirstTimeUser}
       transactions={allTransactions}
+      isAdmin={isAdmin}
     />
   );
 };

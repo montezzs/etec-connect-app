@@ -15,7 +15,8 @@ import {
   Target,
   Bell,
   User,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialAssistant } from "@/components/ai/financial-assistant";
@@ -23,6 +24,7 @@ import { SmartSuggestions } from "@/components/ai/smart-suggestions";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { FinancialStats } from "@/components/banking/financial-stats";
 import heroImage from "@/assets/hero-banking.jpg";
+import { DollarSign } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -39,50 +41,14 @@ interface DashboardProps {
   onNavigate: (page: string) => void;
   isFirstTime?: boolean;
   transactions?: Transaction[];
+  isAdmin?: boolean;
 }
 
-export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions }: DashboardProps) => {
+export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions, isAdmin = false }: DashboardProps) => {
   const [showBalance, setShowBalance] = useState(true);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
-  const [transactions] = useState<Transaction[]>(
-    externalTransactions && externalTransactions.length > 0
-      ? externalTransactions
-      : [
-          {
-            id: "1",
-            type: "income",
-            description: "Salário ETEC",
-            amount: 3200.0,
-            date: "2024-01-15",
-            category: "Salário",
-          },
-          {
-            id: "2",
-            type: "expense",
-            description: "Supermercado",
-            amount: 120.5,
-            date: "2024-01-14",
-            category: "Alimentação",
-          },
-          {
-            id: "3",
-            type: "expense",
-            description: "Transporte",
-            amount: 45.3,
-            date: "2024-01-14",
-            category: "Transporte",
-          },
-          {
-            id: "4",
-            type: "income",
-            description: "PIX Recebido",
-            amount: 200.0,
-            date: "2024-01-13",
-            category: "Transferência",
-          },
-        ]
-  );
+  const [transactions] = useState<Transaction[]>(externalTransactions || []);
   const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
@@ -193,6 +159,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
                 variant="pix"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("pix")}
+                disabled={user.balance <= 0}
               >
                 <QrCode className="w-6 h-6 mb-1" />
                 <span className="text-xs">PIX</span>
@@ -209,6 +176,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
                 variant="secondary"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => onNavigate("investments")}
+                disabled={user.balance <= 0}
               >
                 <PiggyBank className="w-6 h-6 mb-1" />
                 <span className="text-xs">Investir</span>
@@ -216,12 +184,24 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <BankingButton
                 variant="secondary"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
-                onClick={() => onNavigate("notifications")}
+                onClick={() => onNavigate("goals")}
               >
-                <Bell className="w-6 h-6 mb-1" />
-                <span className="text-xs">Notificações</span>
+                <Target className="w-6 h-6 mb-1" />
+                <span className="text-xs">Metas</span>
               </BankingButton>
             </div>
+            
+            {/* Admin Button */}
+            {isAdmin && (
+              <BankingButton
+                variant="default"
+                className="w-full mt-3 bg-gradient-to-r from-primary to-primary-light"
+                onClick={() => onNavigate("admin")}
+              >
+                <Shield className="w-5 h-5 mr-2" />
+                Painel Administrativo
+              </BankingButton>
+            )}
           </CardContent>
         </Card>
 
@@ -240,77 +220,80 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {transactions.slice(0, 4).map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    transaction.type === 'income' 
-                      ? 'bg-success/20 text-success' 
-                      : 'bg-destructive/20 text-destructive'
-                  }`}>
-                    {transaction.type === 'income' ? (
-                      <ArrowDownLeft className="w-5 h-5" />
-                    ) : (
-                      <ArrowUpRight className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{transaction.description}</p>
-                    <p className="text-xs text-muted-foreground">{transaction.category}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`font-semibold ${
-                    transaction.type === 'income' ? 'text-success' : 'text-destructive'
-                  }`}>
-                    {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
+            {transactions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-2">Nenhuma transação ainda</p>
+                <p className="text-sm text-muted-foreground">
+                  {user.balance === 0 
+                    ? "Aguardando depósito inicial na sua conta"
+                    : "Suas transações aparecerão aqui"}
+                </p>
               </div>
-            ))}
+            ) : (
+              transactions.slice(0, 4).map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent/70 hover:scale-[1.02] transition-all duration-200 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      transaction.type === 'income' 
+                        ? 'bg-success/20 text-success' 
+                        : 'bg-destructive/20 text-destructive'
+                    }`}>
+                      {transaction.type === 'income' ? (
+                        <ArrowDownLeft className="w-5 h-5" />
+                      ) : (
+                        <ArrowUpRight className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{transaction.description}</p>
+                      <p className="text-xs text-muted-foreground">{transaction.category}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-semibold ${
+                      transaction.type === 'income' ? 'text-success' : 'text-destructive'
+                    }`}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(transaction.date).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
-        {/* Financial Stats */}
-        <FinancialStats transactions={transactions} />
+        {/* Financial Stats - Only show if has transactions */}
+        {transactions.length > 0 && <FinancialStats transactions={transactions} />}
 
-        {/* Smart Suggestions */}
-        <SmartSuggestions
-          userBalance={user.balance}
-          transactions={transactions}
-          username={user.username}
-          onActionClick={handleAssistantAction}
-        />
+        {/* Smart Suggestions - Only show if has transactions */}
+        {transactions.length > 0 && (
+          <SmartSuggestions
+            userBalance={user.balance}
+            transactions={transactions}
+            username={user.username}
+            onActionClick={handleAssistantAction}
+          />
+        )}
 
-        {/* Goals Card */}
-        <Card className="shadow-[var(--shadow-card)] animate-slide-up hover:shadow-[var(--shadow-elevation)] transition-all duration-300">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary" />
-              Meta de economia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-              <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span>Viagem ETEC 2024</span>
-                <span className="font-medium">Ð$ 850 / Ð$ 1.500</span>
+        {/* Empty State for Zero Balance */}
+        {user.balance === 0 && transactions.length === 0 && (
+          <Card className="shadow-[var(--shadow-card)] animate-slide-up">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <DollarSign className="w-8 h-8 text-primary" />
               </div>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-primary to-primary-light h-2 rounded-full transition-all duration-500"
-                  style={{ width: '56.7%' }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Faltam Ð$ 650 para atingir sua meta!
+              <h3 className="text-lg font-semibold mb-2">Bem-vindo ao Banco ETEC!</h3>
+              <p className="text-muted-foreground mb-4">
+                Sua conta foi criada com sucesso. Aguarde um administrador adicionar saldo inicial para começar a usar os serviços.
               </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Goals Card - Removed default goal, will show when user creates */}
       </div>
 
       {/* AI Assistant */}
