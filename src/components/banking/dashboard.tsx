@@ -16,15 +16,18 @@ import {
   Bell,
   User,
   LogOut,
-  Shield
+  Shield,
+  DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialAssistant } from "@/components/ai/financial-assistant";
 import { SmartSuggestions } from "@/components/ai/smart-suggestions";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { FinancialStats } from "@/components/banking/financial-stats";
-import heroImage from "@/assets/hero-banking.jpg";
-import { DollarSign } from "lucide-react";
+import { PixSystem } from "./pix-system";
+import { TransactionHistory } from "./transaction-history";
+import { Blockchain, Transaction as BlockchainTransaction } from "@/blockchain/blockchain";
+import { loadBlockchain, saveBlockchain } from "@/blockchain/storage";
 
 interface Transaction {
   id: string;
@@ -45,22 +48,79 @@ interface DashboardProps {
 }
 
 export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions, isAdmin = false }: DashboardProps) => {
+  const [page, setPage] = useState<"dashboard" | "pix" | "history">("dashboard");
+  const [blockchain, setBlockchain] = useState<Blockchain>(new Blockchain());
+  const [balance, setBalance] = useState(user.balance);
   const [showBalance, setShowBalance] = useState(true);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
-  const [transactions] = useState<Transaction[]>(externalTransactions || []);
   const { toast } = useToast();
+
+  // Load blockchain on mount
+  useEffect(() => {
+    const saved = loadBlockchain();
+    if (saved) {
+      setBlockchain(saved);
+    }
+  }, []);
+
+  // Convert blockchain transactions to dashboard format
+  const blockchainTransactions: Transaction[] = blockchain.getAllTransactions().map(t => ({
+    id: t.id,
+    type: t.type === 'receive' ? 'income' : 'expense',
+    description: t.description,
+    amount: t.amount,
+    date: t.date || t.timestamp,
+    category: t.category || 'PIX'
+  }));
+
+  const transactions = externalTransactions || blockchainTransactions;
 
   const formatCurrency = (value: number) => {
     return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
+  const addTransaction = (amount: number, type: "send" | "receive", description: string) => {
+    const tx: BlockchainTransaction = {
+      id: crypto.randomUUID(),
+      type,
+      description,
+      amount,
+      timestamp: new Date().toISOString(),
+      category: "PIX",
+    };
+    
+    const updated = new Blockchain();
+    Object.assign(updated, blockchain);
+    updated.addTransaction(tx);
+    updated.minePendingTransactions();
+    saveBlockchain(updated);
+    setBlockchain(updated);
+    setBalance(prev => type === "receive" ? prev + amount : prev - amount);
+  };
+
   const handleQuickAction = (action: string) => {
     setUserActions(prev => [...prev, action.toLowerCase().replace(' ', '-')]);
-    toast({
-      title: `${action} selecionado`,
-      description: "Funcionalidade em desenvolvimento",
-    });
+    
+    switch(action) {
+      case 'PIX':
+        setPage('pix');
+        break;
+      case 'Cartão':
+        onNavigate('card');
+        break;
+      case 'Investir':
+        onNavigate('investments');
+        break;
+      case 'Metas':
+        onNavigate('goals');
+        break;
+      default:
+        toast({
+          title: `${action} selecionado`,
+          description: "Funcionalidade em desenvolvimento"
+        });
+    }
   };
 
   const handleAssistantAction = (action: string) => {
@@ -79,13 +139,22 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
 
   // Detect user behavior patterns
   useEffect(() => {
-    if (user.balance > 3000) {
+    if (balance > 3000) {
       setUserActions(prev => [...prev, 'high-balance']);
     }
     if (transactions.length > 10) {
       setUserActions(prev => [...prev, 'multiple-transactions']);
     }
-  }, [user.balance, transactions]);
+  }, [balance, transactions.length]);
+
+  // Handle different pages
+  if (page === "pix") {
+    return <PixSystem onBack={() => setPage("dashboard")} userBalance={balance} onTransaction={addTransaction} />;
+  }
+
+  if (page === "history") {
+    return <TransactionHistory onBack={() => setPage("dashboard")} transactions={transactions} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/10">
@@ -138,7 +207,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               </BankingButton>
             </div>
             <p className="text-3xl font-bold text-foreground mb-2">
-              {showBalance ? formatCurrency(user.balance) : "••••••"}
+              {showBalance ? formatCurrency(balance) : "••••••"}
             </p>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
@@ -158,8 +227,8 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <BankingButton
                 variant="pix"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
-                onClick={() => onNavigate("pix")}
-                disabled={user.balance <= 0}
+                onClick={() => handleQuickAction("PIX")}
+                disabled={balance <= 0}
               >
                 <QrCode className="w-6 h-6 mb-1" />
                 <span className="text-xs">PIX</span>
@@ -175,8 +244,8 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <BankingButton
                 variant="secondary"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
-                onClick={() => onNavigate("investments")}
-                disabled={user.balance <= 0}
+                onClick={() => handleQuickAction("Investir")}
+                disabled={balance <= 0}
               >
                 <PiggyBank className="w-6 h-6 mb-1" />
                 <span className="text-xs">Investir</span>
@@ -184,7 +253,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <BankingButton
                 variant="secondary"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
-                onClick={() => onNavigate("goals")}
+                onClick={() => handleQuickAction("Metas")}
               >
                 <Target className="w-6 h-6 mb-1" />
                 <span className="text-xs">Metas</span>
@@ -213,7 +282,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <BankingButton
                 variant="ghost"
                 size="sm"
-                onClick={() => onNavigate("history")}
+                onClick={() => setPage("history")}
               >
                 Ver todas
               </BankingButton>
@@ -224,7 +293,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-2">Nenhuma transação ainda</p>
                 <p className="text-sm text-muted-foreground">
-                  {user.balance === 0 
+                  {balance === 0 
                     ? "Aguardando depósito inicial na sua conta"
                     : "Suas transações aparecerão aqui"}
                 </p>
@@ -271,7 +340,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
         {/* Smart Suggestions - Only show if has transactions */}
         {transactions.length > 0 && (
           <SmartSuggestions
-            userBalance={user.balance}
+            userBalance={balance}
             transactions={transactions}
             username={user.username}
             onActionClick={handleAssistantAction}
@@ -279,7 +348,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
         )}
 
         {/* Empty State for Zero Balance */}
-        {user.balance === 0 && transactions.length === 0 && (
+        {balance === 0 && transactions.length === 0 && (
           <Card className="shadow-[var(--shadow-card)] animate-slide-up">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
@@ -292,13 +361,11 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
             </CardContent>
           </Card>
         )}
-
-        {/* Goals Card - Removed default goal, will show when user creates */}
       </div>
 
       {/* AI Assistant */}
       <FinancialAssistant
-        userBalance={user.balance}
+        userBalance={balance}
         transactions={transactions}
         username={user.username}
         isOpen={isAssistantOpen}
