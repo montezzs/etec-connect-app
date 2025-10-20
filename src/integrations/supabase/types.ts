@@ -234,6 +234,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_transaction: {
+        Args: {
+          _amount: number
+          _description: string
+          _recipient_key?: string
+          _type: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"

@@ -54,9 +54,13 @@ const Auth = () => {
 
         toast({
           title: "Conta criada com sucesso!",
-          description: "Você já pode fazer login",
+          description: "Bem-vindo ao ETEC Bank. Seu perfil está sendo configurado...",
         });
-        setIsLogin(true);
+        
+        // Wait a moment for trigger to create profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        navigate("/");
       }
     } catch (error: any) {
       toast({

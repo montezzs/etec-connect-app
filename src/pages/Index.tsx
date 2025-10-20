@@ -135,42 +135,65 @@ const Index = () => {
   const handleTransaction = async (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => {
     if (!user || !profile) return;
 
-    // Update balance
-    const newBalance = type === 'send' ? profile.balance - amount : profile.balance + amount;
-    
-    await supabase
-      .from("profiles")
-      .update({ balance: newBalance })
-      .eq("id", user.id);
-
-    // Create transaction record
-    await supabase
-      .from("transactions")
-      .insert({
-        user_id: user.id,
-        type,
-        amount,
-        description,
-        recipient_key: recipientKey,
+    try {
+      // Call secure server-side function
+      const { data, error } = await supabase.rpc('process_transaction', {
+        _amount: amount,
+        _type: type,
+        _description: description,
+        _recipient_key: recipientKey || null
       });
 
-    // Create notification
-    await supabase
-      .from("notifications")
-      .insert({
-        user_id: user.id,
+      if (error) {
+        toast({
+          title: 'Erro na transação',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Update local profile with new balance
+      const result = data as { success: boolean; new_balance: number; transaction_id: string };
+      setProfile({ ...profile, balance: result.new_balance });
+
+      // Refresh transactions list
+      const { data: transactionsData } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (transactionsData) {
+        setAllTransactions(
+          transactionsData.map((t) => ({
+            id: t.id,
+            type: t.type,
+            description: t.description,
+            amount: t.amount,
+            date: t.created_at,
+            category: t.description.includes("PIX")
+              ? "Transferência"
+              : t.description.includes("Supermercado")
+              ? "Alimentação"
+              : t.description.includes("Transporte")
+              ? "Transporte"
+              : "Outros",
+          }))
+        );
+      }
+
+      toast({
         title: type === 'send' ? 'Transferência enviada' : 'Transferência recebida',
-        message: `${type === 'send' ? 'Enviou' : 'Recebeu'} Ð$ ${amount.toFixed(2)}`,
-        type: 'transaction',
+        description: `Ð$ ${amount.toFixed(2)}`,
       });
-
-    // Update local state
-    setProfile({ ...profile, balance: newBalance });
-
-    toast({
-      title: type === 'send' ? 'Transferência enviada' : 'Transferência recebida',
-      description: `Ð$ ${amount.toFixed(2)}`,
-    });
+    } catch (error: any) {
+      toast({
+        title: 'Erro na transação',
+        description: error.message || 'Ocorreu um erro ao processar a transação',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleNavigate = (page: string) => {
@@ -185,8 +208,19 @@ const Index = () => {
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     return null;
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-etec-primary via-etec-secondary to-etec-accent">
+        <div className="text-white text-center">
+          <h2 className="text-2xl mb-4">Configurando seu perfil...</h2>
+          <p>Por favor, aguarde um momento.</p>
+        </div>
+      </div>
+    );
   }
 
   if (currentPage === "pix") {
@@ -270,6 +304,7 @@ const Index = () => {
       isFirstTime={isFirstTimeUser}
       transactions={allTransactions}
       isAdmin={isAdmin}
+      onTransaction={handleTransaction}
     />
   );
 };

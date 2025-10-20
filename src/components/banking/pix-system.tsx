@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 interface PixSystemProps {
   onBack: () => void;
   userBalance: number;
-  onTransaction: (amount: number, type: 'send' | 'receive', description: string) => void;
+  onTransaction: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
 }
 
 export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps) => {
@@ -82,39 +82,43 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
       return;
     }
 
-    if (numAmount > userBalance) {
-      toast({
-        title: "Saldo insuficiente",
-        description: "Você não possui saldo suficiente para esta transferência",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     
-    // Simular envio PIX
-    setTimeout(() => {
-      onTransaction(numAmount, 'send', `PIX para ${pixKey.substring(0, 20)}...`);
+    try {
+      await onTransaction(
+        numAmount, 
+        'send', 
+        description || `PIX para ${pixKey}`,
+        pixKey
+      );
+      
+      setPixKey("");
+      setAmount("");
+      setDescription("");
+      
       toast({
         title: "PIX enviado com sucesso!",
         description: `${formatCurrency(numAmount)} transferido via PIX`,
       });
-      setPixKey("");
-      setAmount("");
-      setDescription("");
+    } catch (error) {
+      // Error already handled in onTransaction
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
-  const handleReceivePix = () => {
+  const handleReceivePix = async () => {
     // Simular recebimento PIX
     const randomAmount = Math.floor(Math.random() * 500) + 50;
-    onTransaction(randomAmount, 'receive', "PIX recebido");
-    toast({
-      title: "PIX recebido!",
-      description: `Você recebeu ${formatCurrency(randomAmount)}`,
-    });
+    try {
+      await onTransaction(randomAmount, 'receive', "PIX recebido");
+      toast({
+        title: "PIX recebido!",
+        description: `Você recebeu ${formatCurrency(randomAmount)}`,
+      });
+    } catch (error) {
+      // Error already handled
+    }
   };
 
   return (

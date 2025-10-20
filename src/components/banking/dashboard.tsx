@@ -45,9 +45,10 @@ interface DashboardProps {
   isFirstTime?: boolean;
   transactions?: Transaction[];
   isAdmin?: boolean;
+  onTransaction?: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
 }
 
-export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions, isAdmin = false }: DashboardProps) => {
+export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions, isAdmin = false, onTransaction: externalOnTransaction }: DashboardProps) => {
   const [page, setPage] = useState<"dashboard" | "pix" | "history">("dashboard");
   const [blockchain, setBlockchain] = useState<Blockchain>(new Blockchain());
   const [balance, setBalance] = useState(user.balance);
@@ -80,7 +81,14 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
     return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
-  const addTransaction = (amount: number, type: "send" | "receive", description: string) => {
+  const addTransaction = async (amount: number, type: "send" | "receive", description: string, recipientKey?: string) => {
+    // Use external transaction handler if provided (from Index.tsx)
+    if (externalOnTransaction) {
+      await externalOnTransaction(amount, type, description, recipientKey);
+      return;
+    }
+    
+    // Fallback to local blockchain (for backward compatibility)
     const tx: BlockchainTransaction = {
       id: crypto.randomUUID(),
       type,
