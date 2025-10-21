@@ -26,8 +26,6 @@ import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { FinancialStats } from "@/components/banking/financial-stats";
 import { PixSystem } from "./pix-system";
 import { TransactionHistory } from "./transaction-history";
-import { Blockchain, Transaction as BlockchainTransaction } from "@/blockchain/blockchain";
-import { loadBlockchain, saveBlockchain } from "@/blockchain/storage";
 
 interface Transaction {
   id: string;
@@ -45,66 +43,34 @@ interface DashboardProps {
   isFirstTime?: boolean;
   transactions?: Transaction[];
   isAdmin?: boolean;
-  onTransaction?: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
+  onTransaction: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
 }
 
-export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions, isAdmin = false, onTransaction: externalOnTransaction }: DashboardProps) => {
+export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions = [], isAdmin = false, onTransaction: externalOnTransaction }: DashboardProps) => {
   const [page, setPage] = useState<"dashboard" | "pix" | "history">("dashboard");
-  const [blockchain, setBlockchain] = useState<Blockchain>(new Blockchain());
   const [balance, setBalance] = useState(user.balance);
   const [showBalance, setShowBalance] = useState(true);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Load blockchain on mount
-  useEffect(() => {
-    const saved = loadBlockchain();
-    if (saved) {
-      setBlockchain(saved);
-    }
-  }, []);
-
-  // Convert blockchain transactions to dashboard format
-  const blockchainTransactions: Transaction[] = blockchain.getAllTransactions().map(t => ({
-    id: t.id,
-    type: t.type === 'receive' ? 'income' : 'expense',
-    description: t.description,
-    amount: t.amount,
-    date: t.date || t.timestamp,
-    category: t.category || 'PIX'
-  }));
-
-  const transactions = externalTransactions || blockchainTransactions;
+  const transactions = externalTransactions;
 
   const formatCurrency = (value: number) => {
     return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
   const addTransaction = async (amount: number, type: "send" | "receive", description: string, recipientKey?: string) => {
-    // Use external transaction handler if provided (from Index.tsx)
+    // All transactions now use the secure database handler
     if (externalOnTransaction) {
       await externalOnTransaction(amount, type, description, recipientKey);
-      return;
+    } else {
+      toast({
+        title: "Erro",
+        description: "Sistema de transações não configurado",
+        variant: "destructive"
+      });
     }
-    
-    // Fallback to local blockchain (for backward compatibility)
-    const tx: BlockchainTransaction = {
-      id: crypto.randomUUID(),
-      type,
-      description,
-      amount,
-      timestamp: new Date().toISOString(),
-      category: "PIX",
-    };
-    
-    const updated = new Blockchain();
-    Object.assign(updated, blockchain);
-    updated.addTransaction(tx);
-    updated.minePendingTransactions();
-    saveBlockchain(updated);
-    setBlockchain(updated);
-    setBalance(prev => type === "receive" ? prev + amount : prev - amount);
   };
 
   const handleQuickAction = (action: string) => {
