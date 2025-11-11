@@ -23,58 +23,68 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Separate async functions for data fetching (avoid deadlocks in auth callback)
+  const fetchUserProfile = async (userId: string) => {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    setProfile(profileData);
+  };
+
+  const checkAdminRole = async (userId: string) => {
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .single();
+    setIsAdmin(!!roleData);
+    
+    const isFirstTime = !localStorage.getItem(`user_${userId}_visited`);
+    setIsFirstTimeUser(isFirstTime);
+    if (isFirstTime) {
+      localStorage.setItem(`user_${userId}_visited`, "true");
+    }
+  };
+
+  const fetchUserTransactions = async (userId: string) => {
+    const { data: transactionsData } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    setAllTransactions(transactionsData || []);
+  };
+
   useEffect(() => {
-    // Check authentication state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-          
-          setProfile(profileData);
-          
-          // Check if user is admin
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .eq("role", "admin")
-            .single();
-          
-          setIsAdmin(!!roleData);
-          
-          // Check if first time
-          const isFirstTime = !localStorage.getItem(`user_${session.user.id}_visited`);
-          setIsFirstTimeUser(isFirstTime);
-          if (isFirstTime) {
-            localStorage.setItem(`user_${session.user.id}_visited`, 'true');
-          }
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
+    // Keep auth callback synchronous to prevent deadlocks
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Defer all database calls outside the callback using setTimeout
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+          checkAdminRole(session.user.id);
+          fetchUserTransactions(session.user.id);
+        }, 0);
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+        setIsFirstTimeUser(false);
+        setAllTransactions([]);
       }
-    );
+      
+      setLoading(false);
+    });
 
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
       if (session?.user) {
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data }) => {
-            setProfile(data);
-            setLoading(false);
-          });
+        fetchUserProfile(session.user.id);
+        fetchUserTransactions(session.user.id);
       } else {
         setLoading(false);
       }
@@ -292,7 +302,7 @@ const Index = () => {
     }
     
     return (
-      <AdminPanel onBack={() => setCurrentPage("dashboard")} />
+      <AdminPanel onBack={() => setCurrentPage("dashboard")} userId={user.id} />
     );
   }
 

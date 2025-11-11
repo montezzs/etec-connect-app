@@ -5,8 +5,10 @@ import { BankingButton } from "@/components/ui/banking-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Shield, Users, DollarSign, Search } from "lucide-react";
+import { ArrowLeft, Shield, Users, DollarSign, Search, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SecurityMonitor } from "./security-monitor";
 
 interface UserProfile {
   id: string;
@@ -18,9 +20,10 @@ interface UserProfile {
 
 interface AdminPanelProps {
   onBack: () => void;
+  userId: string;
 }
 
-export const AdminPanel = ({ onBack }: AdminPanelProps) => {
+export const AdminPanel = ({ onBack, userId }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -104,7 +107,20 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto p-4 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="users">
+              <Users className="w-4 h-4 mr-2" />
+              Gerenciar Usuários
+            </TabsTrigger>
+            <TabsTrigger value="security">
+              <Activity className="w-4 h-4 mr-2" />
+              Monitoramento de Segurança
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="space-y-6 mt-6">
         {/* Stats Card */}
         <Card className="shadow-[var(--shadow-card)] animate-scale-in">
           <CardContent className="p-6">
@@ -249,6 +265,12 @@ export const AdminPanel = ({ onBack }: AdminPanelProps) => {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="security" className="mt-6">
+            <SecurityMonitor userId={userId} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

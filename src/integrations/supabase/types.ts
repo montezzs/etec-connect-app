@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_rate_limits: {
+        Row: {
+          action_count: number
+          action_type: string
+          admin_id: string
+          id: string
+          window_start: string
+        }
+        Insert: {
+          action_count?: number
+          action_type: string
+          admin_id: string
+          id?: string
+          window_start?: string
+        }
+        Update: {
+          action_count?: number
+          action_type?: string
+          admin_id?: string
+          id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string | null
@@ -159,6 +225,56 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_anomalies: {
+        Row: {
+          anomaly_type: string
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          anomaly_type: string
+          created_at?: string
+          description: string
+          id?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          anomaly_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_anomalies_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -227,12 +343,26 @@ export type Database = {
         Args: { amount: number; reason: string; target_user_id: string }
         Returns: undefined
       }
+      detect_transaction_anomalies: {
+        Args: { _amount: number; _type: string; _user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          _action: string
+          _new_values?: Json
+          _old_values?: Json
+          _record_id?: string
+          _table_name?: string
+        }
+        Returns: undefined
       }
       process_transaction: {
         Args: {
