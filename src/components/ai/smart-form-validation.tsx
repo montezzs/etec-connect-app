@@ -46,7 +46,8 @@ export const SmartFormValidation = ({
 
   // Advanced validation with contextual intelligence
   const validateInput = (inputValue: string): ValidationResult => {
-    if (!inputValue.trim()) {
+    // Description is optional, skip empty check
+    if (!inputValue.trim() && type !== 'description') {
       return {
         isValid: false,
         message: `${label} é obrigatório`,
@@ -186,6 +187,15 @@ export const SmartFormValidation = ({
   };
 
   const validateDescription = (desc: string): ValidationResult => {
+    // Description is optional - return valid if empty
+    if (!desc || desc.trim().length === 0) {
+      return {
+        isValid: true,
+        message: '',
+        type: 'success'
+      };
+    }
+
     if (desc.length > 100) {
       return {
         isValid: false,
@@ -194,16 +204,7 @@ export const SmartFormValidation = ({
       };
     }
 
-    // Smart suggestions for common descriptions
-    const commonDescriptions = [
-      'Almoço universitário',
-      'Material escolar ETEC',
-      'Transporte estudantil',
-      'Projeto acadêmico',
-      'Divisão de conta'
-    ];
-
-    if (desc.length < 3 && desc.length > 0) {
+    if (desc.length < 3) {
       return {
         isValid: true,
         message: 'Descrição muito curta',

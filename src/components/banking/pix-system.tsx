@@ -174,7 +174,6 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
                   label="Chave PIX do destinatário"
                   placeholder="E-mail, CPF, telefone ou chave aleatória"
                   onChange={setPixKey}
-                  onValidationChange={(valid) => setIsFormValid(valid && !!amount)}
                 />
                 
                 <SmartFormValidation
@@ -184,22 +183,32 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
                   placeholder="0,00"
                   userBalance={userBalance}
                   onChange={setAmount}
-                  onValidationChange={(valid) => setIsFormValid(valid && !!pixKey)}
                 />
 
-                <SmartFormValidation
-                  type="description"
-                  value={description}
-                  label="Descrição (opcional)"
-                  placeholder="Descrição da transferência"
-                  onChange={setDescription}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium text-muted-foreground">
+                    Descrição (opcional)
+                  </Label>
+                  <Input
+                    id="description"
+                    type="text"
+                    placeholder="Almoço, Material escolar, etc."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={100}
+                  />
+                  {description.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {description.length}/100 caracteres
+                    </p>
+                  )}
+                </div>
 
                 <BankingButton
                   variant="pix"
                   className="w-full"
                   onClick={handleSendPix}
-                  disabled={isLoading || !isFormValid}
+                  disabled={isLoading || !pixKey || !amount}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">

@@ -108,16 +108,33 @@ export const SmartSuggestions = ({
     }
 
     // PIX security tip
-    const pixTransactions = transactions.filter(t => t.description.includes('PIX'));
+    const pixTransactions = transactions.filter(t => 
+      t.description.toLowerCase().includes('pix') || 
+      t.description.toLowerCase().includes('transferência')
+    );
+    
     if (pixTransactions.length > 5) {
       newSuggestions.push({
         id: 'pix-security',
         type: 'security',
         title: 'Dica de segurança PIX',
-        description: 'Você faz muitas transações PIX. Lembre-se de sempre verificar os dados antes de confirmar.',
-        action: 'Ver dicas',
+        description: 'Você faz muitas transações PIX. Lembre-se de sempre verificar os dados do destinatário antes de confirmar.',
+        action: 'Ver dicas de segurança',
         priority: 'medium',
         icon: Shield
+      });
+    }
+    
+    // PIX usage suggestion
+    if (pixTransactions.length === 0 && transactions.length > 3) {
+      newSuggestions.push({
+        id: 'try-pix',
+        type: 'tip',
+        title: 'Experimente o PIX',
+        description: 'PIX é instantâneo, gratuito e disponível 24/7. Mais rápido que TED/DOC!',
+        action: 'Fazer primeiro PIX',
+        priority: 'medium',
+        icon: TrendingUp
       });
     }
 
