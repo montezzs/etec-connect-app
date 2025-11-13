@@ -133,6 +133,58 @@ const Index = () => {
     fetchTransactions();
   }, [user]);
 
+  // Realtime alerts for transactions and goals
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('live-alerts')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          try {
+            const t: any = payload.new;
+            console.log('[Realtime] New transaction', t);
+            if (t?.type === 'receive') {
+              toast({
+                title: 'PIX recebido em tempo real',
+                description: `Ð$ ${Number(t.amount).toFixed(2)} de ${t.description?.replace('PIX recebido de ', '') || 'desconhecido'}`,
+              });
+            }
+          } catch (e) {
+            console.error('Realtime transaction handler error', e);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'goals', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          try {
+            const oldRow: any = payload.old;
+            const newRow: any = payload.new;
+            console.log('[Realtime] Goal updated', newRow);
+            const crossed = Number(oldRow?.current_amount || 0) < Number(newRow.target_amount) && Number(newRow.current_amount) >= Number(newRow.target_amount);
+            const completed = (oldRow?.status !== 'completed') && (newRow?.status === 'completed');
+            if (crossed || completed) {
+              toast({
+                title: 'Meta alcançada!',
+                description: `Parabéns! Você atingiu a meta: ${newRow.title}`,
+              });
+            }
+          } catch (e) {
+            console.error('Realtime goals handler error', e);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, toast]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({

@@ -72,8 +72,9 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
       return;
     }
 
-    const numAmount = parseFloat(amount);
-    if (numAmount <= 0) {
+    // Normalize amount (support comma and dot)
+    const numAmount = parseFloat(amount.replace(',', '.'));
+    if (isNaN(numAmount) || numAmount <= 0) {
       toast({
         title: "Valor inválido",
         description: "O valor deve ser maior que zero",
@@ -82,26 +83,36 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
       return;
     }
 
+    // Normalize PIX key to expected backend format (username)
+    let recipientKey = pixKey.trim();
+    if (recipientKey.includes('@')) {
+      // Process emails: backend expects username (before @)
+      recipientKey = recipientKey.split('@')[0];
+    }
+
     setIsLoading(true);
-    
     try {
       await onTransaction(
-        numAmount, 
-        'send', 
+        numAmount,
+        'send',
         description || `PIX para ${pixKey}`,
-        pixKey
+        recipientKey
       );
-      
+
       setPixKey("");
       setAmount("");
       setDescription("");
-      
+
       toast({
         title: "PIX enviado com sucesso!",
         description: `${formatCurrency(numAmount)} transferido via PIX`,
       });
-    } catch (error) {
-      // Error already handled in onTransaction
+    } catch (error: any) {
+      toast({
+        title: "Erro no PIX",
+        description: error?.message || "Não foi possível enviar o PIX",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
