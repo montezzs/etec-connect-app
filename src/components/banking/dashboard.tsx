@@ -20,7 +20,6 @@ import {
   DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FinancialAssistant } from "@/components/ai/financial-assistant";
 import { SmartSuggestions } from "@/components/ai/smart-suggestions";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { FinancialStats } from "@/components/banking/financial-stats";
@@ -48,9 +47,7 @@ interface DashboardProps {
 
 export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, transactions: externalTransactions = [], isAdmin = false, onTransaction: externalOnTransaction }: DashboardProps) => {
   const [page, setPage] = useState<"dashboard" | "pix" | "history">("dashboard");
-  const [balance, setBalance] = useState(user.balance);
   const [showBalance, setShowBalance] = useState(true);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [userActions, setUserActions] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -97,15 +94,6 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
     }
   };
 
-  const handleAssistantAction = (action: string) => {
-    if (action.includes('gastos')) {
-      setUserActions(prev => [...prev, 'expense-analysis']);
-    } else if (action.includes('meta')) {
-      onNavigate('goals');
-    } else if (action.includes('investimento')) {
-      setUserActions(prev => [...prev, 'investment-interest']);
-    }
-  };
 
   const handlePromptComplete = (promptId: string) => {
     setUserActions(prev => [...prev, `prompt-completed-${promptId}`]);
@@ -113,17 +101,17 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
 
   // Detect user behavior patterns
   useEffect(() => {
-    if (balance > 3000) {
+    if (user.balance > 3000) {
       setUserActions(prev => [...prev, 'high-balance']);
     }
     if (transactions.length > 10) {
       setUserActions(prev => [...prev, 'multiple-transactions']);
     }
-  }, [balance, transactions.length]);
+  }, [user.balance, transactions.length]);
 
   // Handle different pages
   if (page === "pix") {
-    return <PixSystem onBack={() => setPage("dashboard")} userBalance={balance} onTransaction={addTransaction} />;
+    return <PixSystem onBack={() => setPage("dashboard")} userBalance={user.balance} onTransaction={addTransaction} />;
   }
 
   if (page === "history") {
@@ -181,7 +169,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               </BankingButton>
             </div>
             <p className="text-3xl font-bold text-foreground mb-2">
-              {showBalance ? formatCurrency(balance) : "••••••"}
+              {showBalance ? formatCurrency(user.balance) : "••••••"}
             </p>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
@@ -202,7 +190,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
                 variant="pix"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => handleQuickAction("PIX")}
-                disabled={balance <= 0}
+                disabled={user.balance <= 0}
               >
                 <QrCode className="w-6 h-6 mb-1" />
                 <span className="text-xs">PIX</span>
@@ -219,7 +207,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
                 variant="secondary"
                 className="h-16 flex-col hover:scale-105 transition-transform duration-200"
                 onClick={() => handleQuickAction("Investir")}
-                disabled={balance <= 0}
+                disabled={user.balance <= 0}
               >
                 <PiggyBank className="w-6 h-6 mb-1" />
                 <span className="text-xs">Investir</span>
@@ -267,7 +255,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-2">Nenhuma transação ainda</p>
                 <p className="text-sm text-muted-foreground">
-                  {balance === 0 
+                  {user.balance === 0 
                     ? "Aguardando depósito inicial na sua conta"
                     : "Suas transações aparecerão aqui"}
                 </p>
@@ -314,15 +302,15 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
         {/* Smart Suggestions - Only show if has transactions */}
         {transactions.length > 0 && (
           <SmartSuggestions
-            userBalance={balance}
+            userBalance={user.balance}
             transactions={transactions}
             username={user.username}
-            onActionClick={handleAssistantAction}
+            onActionClick={() => {}}
           />
         )}
 
         {/* Empty State for Zero Balance */}
-        {balance === 0 && transactions.length === 0 && (
+        {user.balance === 0 && transactions.length === 0 && (
           <Card className="shadow-[var(--shadow-card)] animate-slide-up">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
@@ -336,15 +324,6 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
           </Card>
         )}
       </div>
-
-      {/* AI Assistant */}
-      <FinancialAssistant
-        userBalance={balance}
-        transactions={transactions}
-        username={user.username}
-        isOpen={isAssistantOpen}
-        onToggle={() => setIsAssistantOpen(!isAssistantOpen)}
-      />
 
       {/* Contextual Prompts */}
       <ContextualPrompts

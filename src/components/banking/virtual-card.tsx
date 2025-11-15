@@ -16,23 +16,27 @@ import {
   Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VirtualCardProps {
   onBack: () => void;
   userBalance: number;
+  userId: string;
+  username: string;
 }
 
-export const VirtualCard = ({ onBack, userBalance }: VirtualCardProps) => {
+export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const [cardLocked, setCardLocked] = useState(false);
-  const [cvv, setCvv] = useState("847");
+  const [cvv, setCvv] = useState("");
   const [copied, setCopied] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const cardNumber = "5234 5678 9012 3456";
-  const expiryDate = "12/28";
-  const cardholderName = "ETEC CENTRO PAULA SOUZA";
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cardholderName, setCardholderName] = useState("");
 
   const formatCurrency = (value: number) => {
     return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
@@ -56,43 +60,116 @@ export const VirtualCard = ({ onBack, userBalance }: VirtualCardProps) => {
     }
   };
 
-  const generateNewCvv = () => {
+  const generateNewCvv = async () => {
     setIsRegenerating(true);
-    setTimeout(() => {
+    try {
       const newCvv = Math.floor(Math.random() * 900 + 100).toString();
+      const { error } = await supabase
+        .from('virtual_cards')
+        .update({ cvv: newCvv })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
       setCvv(newCvv);
-      setIsRegenerating(false);
       toast({
         title: "CVV atualizado!",
         description: "Novo código CVV gerado com sucesso",
       });
-    }, 1500);
-  };
-
-  const toggleCardLock = () => {
-    setCardLocked(!cardLocked);
-    toast({
-      title: cardLocked ? "Cartão desbloqueado" : "Cartão bloqueado",
-      description: cardLocked 
-        ? "Seu cartão virtual foi desbloqueado para uso" 
-        : "Seu cartão virtual foi bloqueado temporariamente",
-      variant: cardLocked ? "default" : "destructive",
-    });
-  };
-
-  useEffect(() => {
-    // Gerar novo CVV a cada 24h (simulado com 30s para demo)
-    const interval = setInterval(() => {
-      const newCvv = Math.floor(Math.random() * 900 + 100).toString();
-      setCvv(newCvv);
+    } catch (error: any) {
       toast({
-        title: "CVV renovado automaticamente",
-        description: "Seu CVV foi atualizado por segurança",
+        title: "Erro ao atualizar CVV",
+        description: error.message,
+        variant: "destructive"
       });
-    }, 30000);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
-    return () => clearInterval(interval);
-  }, [toast]);
+  const toggleCardLock = async () => {
+    try {
+      const newLockState = !cardLocked;
+      const { error } = await supabase
+        .from('virtual_cards')
+        .update({ is_locked: newLockState })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setCardLocked(newLockState);
+      toast({
+        title: newLockState ? "Cartão bloqueado" : "Cartão desbloqueado",
+        description: newLockState 
+          ? "Seu cartão virtual foi bloqueado temporariamente"
+          : "Seu cartão virtual foi desbloqueado para uso",
+        variant: newLockState ? "destructive" : "default",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar estado do cartão",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Load or create user's virtual card
+  useEffect(() => {
+    const loadCard = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('virtual_cards')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (data) {
+          setCardNumber(data.card_number);
+          setCvv(data.cvv);
+          setExpiryDate(data.expiry_date);
+          setCardholderName(data.cardholder_name);
+          setCardLocked(data.is_locked || false);
+        } else {
+          // Create new card
+          const newCardNumber = `5234 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`;
+          const newCvv = Math.floor(100 + Math.random() * 900).toString();
+          const newExpiry = `${String(Math.floor(1 + Math.random() * 12)).padStart(2, '0')}/${new Date().getFullYear() + 4}`;
+          const newName = username.toUpperCase();
+
+          const { error: insertError } = await supabase
+            .from('virtual_cards')
+            .insert({
+              user_id: userId,
+              card_number: newCardNumber,
+              cvv: newCvv,
+              expiry_date: newExpiry,
+              cardholder_name: newName,
+              is_locked: false
+            });
+
+          if (insertError) throw insertError;
+
+          setCardNumber(newCardNumber);
+          setCvv(newCvv);
+          setExpiryDate(newExpiry);
+          setCardholderName(newName);
+        }
+      } catch (error: any) {
+        toast({
+          title: "Erro ao carregar cartão",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCard();
+  }, [userId, username, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/10">
