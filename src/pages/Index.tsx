@@ -24,11 +24,14 @@ const Index = () => {
   const { toast } = useToast();
 
   // Separate async functions for data fetching (avoid deadlocks in auth callback)
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId?: string) => {
+    const id = userId || user?.id;
+    if (!id) return;
+    
     const { data: profileData } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", userId)
+      .eq("id", id)
       .single();
     setProfile(profileData);
   };
@@ -133,7 +136,7 @@ const Index = () => {
     fetchTransactions();
   }, [user]);
 
-  // Realtime alerts for transactions and goals
+  // Realtime alerts for transactions and goals + balance sync
   useEffect(() => {
     if (!user) return;
 
@@ -148,12 +151,27 @@ const Index = () => {
             console.log('[Realtime] New transaction', t);
             if (t?.type === 'receive') {
               toast({
-                title: 'PIX recebido em tempo real',
+                title: '💚 PIX recebido',
                 description: `Ð$ ${Number(t.amount).toFixed(2)} de ${t.description?.replace('PIX recebido de ', '') || 'desconhecido'}`,
               });
             }
+            // Refresh balance
+            fetchUserProfile();
           } catch (e) {
             console.error('Realtime transaction handler error', e);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        (payload) => {
+          try {
+            const newProfile: any = payload.new;
+            console.log('[Realtime] Profile updated', newProfile);
+            setUser(prev => prev ? { ...prev, balance: newProfile.balance || 0 } : null);
+          } catch (e) {
+            console.error('Realtime profile handler error', e);
           }
         }
       )
@@ -300,6 +318,8 @@ const Index = () => {
       <VirtualCard
         onBack={() => setCurrentPage("dashboard")}
         userBalance={profile.balance}
+        userId={user.id}
+        username={profile.username}
       />
     );
   }

@@ -334,6 +334,50 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_cards: {
+        Row: {
+          card_number: string
+          cardholder_name: string
+          created_at: string | null
+          cvv: string
+          expiry_date: string
+          id: string
+          is_locked: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          card_number: string
+          cardholder_name: string
+          created_at?: string | null
+          cvv: string
+          expiry_date: string
+          id?: string
+          is_locked?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          card_number?: string
+          cardholder_name?: string
+          created_at?: string | null
+          cvv?: string
+          expiry_date?: string
+          id?: string
+          is_locked?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

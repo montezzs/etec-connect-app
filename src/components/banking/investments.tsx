@@ -135,6 +135,66 @@ export const Investments = ({ onBack, userBalance, userId }: InvestmentsProps) =
     }
   };
 
+  const handleWithdrawInvestment = async (investment: Investment) => {
+    try {
+      const now = new Date();
+      const created = new Date(investment.created_at);
+      const monthsElapsed = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24 * 30);
+      
+      // Calculate prorated return
+      const monthlyRate = investment.expected_return / investment.period_months;
+      const earnedInterest = investment.amount * (monthlyRate / 100) * monthsElapsed;
+      const totalReturn = investment.amount + earnedInterest;
+
+      // Update investment status
+      const { error: updateError } = await supabase
+        .from('investments')
+        .update({ status: 'withdrawn' })
+        .eq('id', investment.id);
+
+      if (updateError) throw updateError;
+
+      // Return funds to balance
+      const { data: profileData, error: balanceError } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', userId)
+        .single();
+
+      if (balanceError) throw balanceError;
+
+      const { error: updateBalanceError } = await supabase
+        .from('profiles')
+        .update({ balance: (profileData.balance || 0) + totalReturn })
+        .eq('id', userId);
+
+      if (updateBalanceError) throw updateBalanceError;
+
+      // Create notification
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title: 'Investimento resgatado',
+          message: `Ð$ ${totalReturn.toFixed(2)} retornou ao saldo (principal + juros proporcionais)`,
+          type: 'investment'
+        });
+
+      toast({
+        title: "Investimento resgatado!",
+        description: `Ð$ ${totalReturn.toFixed(2)} retornou ao seu saldo`,
+      });
+
+      fetchInvestments();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao resgatar investimento",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatCurrency = (value: number) => `Ð$ ${value.toFixed(2).replace('.', ',')}`;
 
   return (
@@ -274,7 +334,7 @@ export const Investments = ({ onBack, userBalance, userId }: InvestmentsProps) =
                       <p className="font-semibold">{investment.name}</p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {investment.period_months} meses
+                        {investment.period_months} meses • {investment.status === 'active' ? 'Ativo' : investment.status === 'withdrawn' ? 'Resgatado' : 'Finalizado'}
                       </p>
                     </div>
                     <div className="text-right">
@@ -287,9 +347,19 @@ export const Investments = ({ onBack, userBalance, userId }: InvestmentsProps) =
                       </p>
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground mb-2">
                     Retorno esperado: {formatCurrency(investment.amount * (1 + investment.expected_return / 100))}
                   </div>
+                  {investment.status === 'active' && (
+                    <BankingButton
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleWithdrawInvestment(investment)}
+                    >
+                      Resgatar Agora (com juros proporcionais)
+                    </BankingButton>
+                  )}
                 </div>
               ))
             )}
