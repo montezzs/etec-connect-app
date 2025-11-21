@@ -117,15 +117,15 @@ const Index = () => {
         setAllTransactions(
           data.map((t) => ({
             id: t.id,
-            type: t.type,
-            description: t.description,
+            type: t.type === 'send' ? 'expense' : 'income',
+            description: t.description || 'Transação',
             amount: t.amount,
-            date: t.created_at,
-            category: t.description.includes("PIX")
+            date: new Date(t.created_at || Date.now()).toISOString(),
+            category: t.description?.includes("PIX")
               ? "Transferência"
-              : t.description.includes("Supermercado")
+              : t.description?.includes("Supermercado")
               ? "Alimentação"
-              : t.description.includes("Transporte")
+              : t.description?.includes("Transporte")
               ? "Transporte"
               : "Outros",
           }))
@@ -248,15 +248,15 @@ const Index = () => {
         setAllTransactions(
           transactionsData.map((t) => ({
             id: t.id,
-            type: t.type,
-            description: t.description,
+            type: t.type === 'send' ? 'expense' : 'income',
+            description: t.description || 'Transação',
             amount: t.amount,
-            date: t.created_at,
-            category: t.description.includes("PIX")
+            date: new Date(t.created_at || Date.now()).toISOString(),
+            category: t.description?.includes("PIX")
               ? "Transferência"
-              : t.description.includes("Supermercado")
+              : t.description?.includes("Supermercado")
               ? "Alimentação"
-              : t.description.includes("Transporte")
+              : t.description?.includes("Transporte")
               ? "Transporte"
               : "Outros",
           }))
@@ -309,6 +309,8 @@ const Index = () => {
         onBack={() => setCurrentPage("dashboard")}
         userBalance={profile.balance}
         onTransaction={handleTransaction}
+        user={profile}
+        userId={user.id}
       />
     );
   }
@@ -380,7 +382,7 @@ const Index = () => {
 
   return (
     <Dashboard
-      user={{ username: profile.username, balance: profile.balance }}
+      user={{ username: profile.username, balance: profile.balance, id: user.id }}
       onLogout={handleLogout}
       onNavigate={handleNavigate}
       isFirstTime={isFirstTimeUser}

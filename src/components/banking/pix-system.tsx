@@ -26,7 +26,7 @@ interface PixSystemProps {
   onTransaction: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
 }
 
-export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps) => {
+export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: PixSystemProps & { user: any; userId: string }) => {
   const [activeTab, setActiveTab] = useState("send");
   const [pixKey, setPixKey] = useState("");
   const [amount, setAmount] = useState("");
@@ -37,8 +37,14 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
   const [isFormValid, setIsFormValid] = useState(false);
   const { toast } = useToast();
 
-  const myPixKey = "etec.user@cps.sp.gov.br";
-  const qrCodeData = `00020101021226570014br.gov.bcb.pix2535${myPixKey}52040000530398654041.005802BR5925ETEC CENTRO PAULA SOUZA6009SAO PAULO62070503***6304`;
+  const userPixKey = user?.username || "";
+  // Create unique QR code with account details
+  const qrCodeData = JSON.stringify({
+    pixKey: userPixKey,
+    accountId: userId,
+    bankName: "Digital Bank",
+    accountType: "PIX"
+  });
 
   const formatCurrency = (value: number) => {
     return `Ð$ ${value.toFixed(2).replace('.', ',')}`;
@@ -46,7 +52,7 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
 
   const handleCopyPixKey = async () => {
     try {
-      await navigator.clipboard.writeText(myPixKey);
+      await navigator.clipboard.writeText(userPixKey);
       setCopied(true);
       toast({
         title: "Chave PIX copiada!",
@@ -250,7 +256,7 @@ export const PixSystem = ({ onBack, userBalance, onTransaction }: PixSystemProps
                     <p className="text-sm text-muted-foreground mb-2">Sua chave PIX:</p>
                     <div className="flex items-center gap-2 justify-center">
                       <Badge variant="secondary" className="text-xs">
-                        {myPixKey}
+                        {userPixKey}
                       </Badge>
                       <BankingButton
                         variant="ghost"

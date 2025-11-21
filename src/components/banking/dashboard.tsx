@@ -36,7 +36,7 @@ interface Transaction {
 }
 
 interface DashboardProps {
-  user: { username: string; balance: number };
+  user: { username: string; balance: number; id: string };
   onLogout: () => void;
   onNavigate: (page: string) => void;
   isFirstTime?: boolean;
@@ -111,7 +111,7 @@ export const Dashboard = ({ user, onLogout, onNavigate, isFirstTime = false, tra
 
   // Handle different pages
   if (page === "pix") {
-    return <PixSystem onBack={() => setPage("dashboard")} userBalance={user.balance} onTransaction={addTransaction} />;
+    return <PixSystem onBack={() => setPage("dashboard")} userBalance={user.balance} onTransaction={addTransaction} user={user} userId={user.id} />;
   }
 
   if (page === "history") {
