@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BankingButton } from "@/components/ui/banking-button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { 
   ArrowLeft, 
   CreditCard, 
@@ -25,6 +26,13 @@ interface VirtualCardProps {
   username: string;
 }
 
+interface CardLimitDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSetLimit: (limit: number) => void;
+  currentLimit: number;
+}
+
 export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
   const [cardLocked, setCardLocked] = useState(false);
@@ -32,6 +40,9 @@ export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCa
   const [copied, setCopied] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [spendingLimit, setSpendingLimit] = useState<number | null>(null);
+  const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [limitInput, setLimitInput] = useState("");
   const { toast } = useToast();
 
   const [cardNumber, setCardNumber] = useState("");
@@ -112,6 +123,33 @@ export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCa
         variant: "destructive"
       });
     }
+  };
+
+  const handleSetLimit = () => {
+    const limit = parseFloat(limitInput);
+    if (isNaN(limit) || limit < 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Digite um valor válido para o limite",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (limit > userBalance) {
+      toast({
+        title: "Limite muito alto",
+        description: "O limite não pode ser maior que seu saldo",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSpendingLimit(limit);
+    setShowLimitDialog(false);
+    setLimitInput("");
+    toast({
+      title: "Limite definido!",
+      description: `Limite de gastos: Ð$ ${limit.toFixed(2)}`,
+    });
   };
 
   // Load or create user's virtual card
@@ -276,10 +314,30 @@ export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCa
             <CardTitle className="text-lg">Informações do cartão</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Balance */}
-            <div className="flex justify-between items-center p-3 bg-accent/50 rounded-lg">
-              <span className="text-sm font-medium">Limite disponível</span>
-              <span className="text-lg font-bold text-primary">{formatCurrency(userBalance)}</span>
+            {/* Balance & Spending Limit */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-3 bg-accent/50 rounded-lg">
+                <span className="text-sm font-medium">Saldo total</span>
+                <span className="text-lg font-bold text-primary">{formatCurrency(userBalance)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
+                <span className="text-sm font-medium">Limite de gastos</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-primary">
+                    {spendingLimit !== null ? formatCurrency(spendingLimit) : "Não definido"}
+                  </span>
+                  <BankingButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setLimitInput(spendingLimit?.toString() || "");
+                      setShowLimitDialog(true);
+                    }}
+                  >
+                    Definir
+                  </BankingButton>
+                </div>
+              </div>
             </div>
 
             {/* CVV */}
@@ -366,6 +424,51 @@ export const VirtualCard = ({ onBack, userBalance, userId, username }: VirtualCa
             </div>
           </CardContent>
         </Card>
+
+        {/* Spending Limit Dialog */}
+        {showLimitDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-sm">
+              <CardHeader>
+                <CardTitle>Definir Limite de Gastos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Valor do limite</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={limitInput}
+                    onChange={(e) => setLimitInput(e.target.value)}
+                    autoFocus
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Saldo disponível: {formatCurrency(userBalance)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <BankingButton
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowLimitDialog(false);
+                      setLimitInput("");
+                    }}
+                  >
+                    Cancelar
+                  </BankingButton>
+                  <BankingButton
+                    className="flex-1"
+                    onClick={handleSetLimit}
+                  >
+                    Confirmar
+                  </BankingButton>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
