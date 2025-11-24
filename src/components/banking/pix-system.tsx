@@ -33,9 +33,11 @@ interface PixSystemProps {
   onBack: () => void;
   userBalance: number;
   onTransaction: (amount: number, type: 'send' | 'receive', description: string, recipientKey?: string) => Promise<void>;
+  user: any;
+  userId: string;
 }
 
-export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: PixSystemProps & { user: any; userId: string }) => {
+export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: PixSystemProps) => {
   const [activeTab, setActiveTab] = useState("send");
   const [pixKey, setPixKey] = useState("");
   const [amount, setAmount] = useState("");
