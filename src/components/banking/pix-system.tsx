@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SmartFormValidation } from "@/components/ai/smart-form-validation";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
 import { QRCodeSVG } from "qrcode.react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { 
   QrCode, 
   Smartphone, 
@@ -17,9 +18,16 @@ import {
   Check,
   Scan,
   Send,
-  Receipt
+  Receipt,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PixSystemProps {
   onBack: () => void;
@@ -36,6 +44,8 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
   const [copied, setCopied] = useState(false);
   const [userActions, setUserActions] = useState<string[]>(['pix-first-access']);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const { toast } = useToast();
 
   const userPixKey = user?.username || "";
@@ -138,6 +148,96 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
       // Error already handled
     }
   };
+
+  const handleShareQRCode = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Minha chave PIX',
+          text: `Envie PIX para: ${userPixKey}`,
+        });
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(userPixKey);
+        toast({
+          title: "Chave copiada!",
+          description: "Compartilhe sua chave PIX copiada",
+        });
+      }
+    } catch (err) {
+      console.error('Share error:', err);
+    }
+  };
+
+  const handleOpenScanner = () => {
+    setScannerOpen(true);
+  };
+
+  const handleCloseScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.clear();
+      scannerRef.current = null;
+    }
+    setScannerOpen(false);
+  };
+
+  useEffect(() => {
+    if (scannerOpen && !scannerRef.current) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          try {
+            const data = JSON.parse(decodedText);
+            if (data.pixKey) {
+              setPixKey(data.pixKey);
+              setActiveTab("send");
+              handleCloseScanner();
+              toast({
+                title: "QR Code lido!",
+                description: `Chave PIX: ${data.pixKey}`,
+              });
+            }
+          } catch (e) {
+            // If not JSON, treat as plain PIX key
+            setPixKey(decodedText);
+            setActiveTab("send");
+            handleCloseScanner();
+            toast({
+              title: "QR Code lido!",
+              description: `Chave PIX: ${decodedText}`,
+            });
+          }
+        },
+        (error) => {
+          if (error.includes("NotFoundError") || error.includes("Camera")) {
+            handleCloseScanner();
+            toast({
+              title: "Camera não encontrada.",
+              description: "Não foi possível acessar a câmera do dispositivo",
+              variant: "destructive",
+            });
+          }
+        }
+      );
+
+      scannerRef.current = scanner;
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+      }
+    };
+  }, [scannerOpen]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-primary/10">
@@ -323,11 +423,11 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
                   </div>
                   
                   <div className="flex gap-2">
-                    <BankingButton variant="outline" className="flex-1">
+                    <BankingButton variant="outline" className="flex-1" onClick={handleOpenScanner}>
                       <Smartphone className="w-4 h-4 mr-2" />
                       Ler QR Code
                     </BankingButton>
-                    <BankingButton variant="secondary" className="flex-1">
+                    <BankingButton variant="secondary" className="flex-1" onClick={handleShareQRCode}>
                       <Copy className="w-4 h-4 mr-2" />
                       Compartilhar
                     </BankingButton>
@@ -345,6 +445,25 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
         userActions={userActions}
         onPromptComplete={(promptId) => setUserActions(prev => [...prev, `completed-${promptId}`])}
       />
+
+      {/* QR Code Scanner Dialog */}
+      <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              Escanear QR Code PIX
+              <BankingButton
+                variant="ghost"
+                size="icon"
+                onClick={handleCloseScanner}
+              >
+                <X className="w-4 h-4" />
+              </BankingButton>
+            </DialogTitle>
+          </DialogHeader>
+          <div id="qr-reader" className="w-full"></div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
