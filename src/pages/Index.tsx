@@ -45,10 +45,10 @@ const Index = () => {
       .single();
     setIsAdmin(!!roleData);
     
-    const isFirstTime = !localStorage.getItem(`user_${userId}_visited`);
+    const isFirstTime = !sessionStorage.getItem(`user_${userId}_login_hints`);
     setIsFirstTimeUser(isFirstTime);
     if (isFirstTime) {
-      localStorage.setItem(`user_${userId}_visited`, "true");
+      sessionStorage.setItem(`user_${userId}_login_hints`, "true");
     }
   };
 
