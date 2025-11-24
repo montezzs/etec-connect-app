@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SmartFormValidation } from "@/components/ai/smart-form-validation";
 import { ContextualPrompts } from "@/components/ai/contextual-prompts";
+import { QRCodeSVG } from "qrcode.react";
 import { 
   QrCode, 
   Smartphone, 
@@ -251,8 +252,15 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center space-y-4">
-                  <div className="p-6 bg-accent/50 rounded-lg">
-                    <QrCode className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <div className="p-6 bg-white rounded-lg">
+                    <div className="flex justify-center mb-4">
+                      <QRCodeSVG 
+                        value={qrCodeData}
+                        size={200}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
                     <p className="text-sm text-muted-foreground mb-2">Sua chave PIX:</p>
                     <div className="flex items-center gap-2 justify-center">
                       <Badge variant="secondary" className="text-xs">
@@ -297,8 +305,13 @@ export const PixSystem = ({ onBack, userBalance, onTransaction, user, userId }: 
               <CardContent className="space-y-4">
                 <div className="text-center space-y-4">
                   <div className="p-8 bg-white rounded-lg mx-auto max-w-xs">
-                    <div className="w-48 h-48 bg-black/10 rounded-lg flex items-center justify-center mx-auto">
-                      <QrCode className="w-32 h-32 text-foreground" />
+                    <div className="flex justify-center">
+                      <QRCodeSVG 
+                        value={qrCodeData}
+                        size={256}
+                        level="H"
+                        includeMargin={true}
+                      />
                     </div>
                   </div>
                   
